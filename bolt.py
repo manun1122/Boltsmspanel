@@ -335,8 +335,12 @@ class OTPMonitorBot:
                 await asyncio.sleep(1)
 
 async def main():
-    TELEGRAM_BOT_TOKEN = "8590402708:AAFtLuEcShBvMEoK2SdceRjO9Rn4817-nX0"
-    GROUP_CHAT_ID = "-1003701215218"
+    # ===== আপনার দেওয়া নতুন টোকেন ও গ্রুপ আইডি =====
+    TELEGRAM_BOT_TOKEN = "8362446113:AAGsrg9iZmeByXmFbig2vdKfmDBUpgppIDM"
+    GROUP_CHAT_ID = "-1001153782407"
+    # ==============================================
+
+    # অন্যান্য কনফিগারেশন (আগের মতোই)
     SESSION_COOKIE = "ff5hm6016v6etkbrtjovjf5kt0"
     TARGET_HOST = "93.190.143.35"
     TARGET_URL = f"http://{TARGET_HOST}/ints/agent/res/data_smscdr.php"
