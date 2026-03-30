@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OTP Monitor Bot - Railway Deployment (Fixed)
+OTP Monitor Bot - Railway Deployment (Full Debug)
 """
 
 import asyncio
@@ -24,7 +24,6 @@ except ImportError:
 
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 
-# Flask app for health check
 app = Flask(__name__)
 
 # ========== CONFIGURATION ==========
@@ -36,7 +35,7 @@ TARGET_URL = os.environ.get("TARGET_URL", "http://144.217.71.192/ints/agent/res/
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.DEBUG
 )
 logger = logging.getLogger(__name__)
 
@@ -55,7 +54,7 @@ class OTPMonitorBot:
             r'verification code[:\s]*\d+', r'Your.*code.*\d+', r'pin[:\s]*\d+',
         ]
         self.otp_regex = re.compile('|'.join(patterns), re.IGNORECASE)
-        logger.info("✅ OTP Monitor Bot initialized on Railway")
+        logger.info("✅ OTP Monitor Bot initialized")
     
     def _load_processed_otps(self):
         try:
@@ -77,48 +76,48 @@ class OTPMonitorBot:
             logger.error(f"Error saving: {e}")
     
     def extract_otp(self, message):
-        """Extract OTP from message string"""
         if not isinstance(message, str):
             message = str(message)
         match = self.otp_regex.search(message)
         return match.group(0) if match else None
     
     def create_otp_id(self, timestamp, phone, message):
-        """Create unique OTP ID"""
         otp = self.extract_otp(message) or str(message)[:20]
         return f"{timestamp}_{phone}_{otp}"
     
     def safe_str(self, value):
-        """Convert any value to string safely"""
         if value is None:
             return ""
-        if isinstance(value, (int, float)):
-            return str(value)
         return str(value)
     
-    def format_message(self, sms):
-        """Format SMS data to Telegram message"""
+    def format_message(self, sms_data):
+        """Format SMS data for Telegram"""
         try:
-            # Safely extract data with type checking
-            timestamp = self.safe_str(sms[0]) if len(sms) > 0 else ""
-            operator = self.safe_str(sms[1]) if len(sms) > 1 else ""
-            phone = self.safe_str(sms[2]) if len(sms) > 2 else ""
-            platform = self.safe_str(sms[3]) if len(sms) > 3 else ""
-            message = self.safe_str(sms[5]) if len(sms) > 5 else ""
-            
-            # Hide phone number
-            if len(phone) >= 8:
-                hidden_phone = phone[:4] + "****" + phone[-4:]
-            else:
-                hidden_phone = phone or "Unknown"
-            
-            # Extract operator name
-            operator_name = operator.split()[0] if operator else ""
-            
-            # Extract OTP
-            otp = self.extract_otp(message) or "Processing..."
-            
-            return f"""
+            # Try to extract data from the list
+            if isinstance(sms_data, list):
+                # Log what we have
+                logger.info(f"📝 Formatting SMS with {len(sms_data)} fields")
+                
+                # Based on the original SMS list format you provided earlier
+                # Format: [timestamp, operator, number, platform, ?, message, ...]
+                timestamp = self.safe_str(sms_data[0]) if len(sms_data) > 0 else ""
+                operator = self.safe_str(sms_data[1]) if len(sms_data) > 1 else ""
+                phone = self.safe_str(sms_data[2]) if len(sms_data) > 2 else ""
+                platform = self.safe_str(sms_data[3]) if len(sms_data) > 3 else ""
+                message = self.safe_str(sms_data[5]) if len(sms_data) > 5 else ""
+                
+                # Check if we got valid data
+                if timestamp and phone and phone != "0":
+                    # Hide phone number
+                    if len(phone) >= 8:
+                        hidden_phone = phone[:4] + "****" + phone[-4:]
+                    else:
+                        hidden_phone = phone
+                    
+                    operator_name = operator.split()[0] if operator else ""
+                    otp = self.extract_otp(message) or "Processing..."
+                    
+                    return f"""
 🔥 **OTP Detected!** 🔥
 ━━━━━━━━━━━━━━━━━━━━
 
@@ -135,9 +134,25 @@ class OTPMonitorBot:
 ━━━━━━━━━━━━━━━━━━━━
 🤖 @updaterange
 """
+                else:
+                    # If data seems invalid, show raw data for debugging
+                    return f"""
+⚠️ **SMS Data Received** ⚠️
+
+**Raw Data:**
+`{sms_data[:6]}`
+
+**Timestamp:** {timestamp}
+**Phone:** {phone}
+**Operator:** {operator}
+**Platform:** {platform}
+
+🤖 @updaterange
+"""
+            return "No valid SMS data"
         except Exception as e:
-            logger.error(f"Error formatting message: {e}")
-            return f"🔥 OTP Detected!\nCheck logs for details"
+            logger.error(f"Format error: {e}")
+            return f"Error: {e}\nData: {sms_data[:3]}"
     
     async def send_telegram_message(self, message):
         try:
@@ -159,29 +174,23 @@ class OTPMonitorBot:
             return False
     
     async def fetch_sms_data(self):
-        """Fetch SMS data from API"""
         headers = {
             "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) Chrome/145.0.0.0 Mobile Safari/537.36",
             "Accept": "application/json, text/javascript, */*; q=0.01",
             "X-Requested-With": "XMLHttpRequest",
             "Cookie": f"PHPSESSID={SESSION_COOKIE}",
             "Referer": "http://144.217.71.192/ints/agent/SMSCDRReports",
-            "Connection": "keep-alive",
         }
         
         current_date = time.strftime("%Y-%m-%d")
         params = {
             "fdate1": f"{current_date} 00:00:00",
             "fdate2": f"{current_date} 23:59:59",
-            "frange": "",
-            "fclient": "",
-            "fnum": "",
-            "fcli": "",
             "fg": "0",
             "sEcho": "1",
             "iColumns": "9",
             "iDisplayStart": "0",
-            "iDisplayLength": "100",  # Increased to get more data
+            "iDisplayLength": "50",
             "sSearch": "",
             "iSortCol_0": "0",
             "sSortDir_0": "desc",
@@ -196,30 +205,44 @@ class OTPMonitorBot:
                         if resp.status == 200:
                             text = await resp.text()
                             if text and text.strip():
-                                return json.loads(text)
+                                data = json.loads(text)
+                                # Log the FULL structure of first record
+                                if data.get("aaData") and len(data["aaData"]) > 0:
+                                    first_record = data["aaData"][0]
+                                    logger.info("=" * 60)
+                                    logger.info("📊 FULL DATA STRUCTURE:")
+                                    logger.info(f"Type: {type(first_record)}")
+                                    logger.info(f"Length: {len(first_record) if hasattr(first_record, '__len__') else 'N/A'}")
+                                    logger.info(f"Content: {first_record}")
+                                    logger.info("=" * 60)
+                                return data
                         else:
                             logger.warning(f"HTTP {resp.status}")
             else:
                 def sync_fetch():
-                    try:
-                        resp = requests.get(TARGET_URL, headers=headers, params=params, timeout=15, verify=False)
-                        if resp.status_code == 200 and resp.text and resp.text.strip():
-                            return resp.json()
-                    except Exception as e:
-                        logger.warning(f"Sync fetch error: {e}")
+                    resp = requests.get(TARGET_URL, headers=headers, params=params, timeout=15, verify=False)
+                    if resp.status_code == 200 and resp.text and resp.text.strip():
+                        data = resp.json()
+                        if data.get("aaData") and len(data["aaData"]) > 0:
+                            first_record = data["aaData"][0]
+                            logger.info("=" * 60)
+                            logger.info("📊 FULL DATA STRUCTURE:")
+                            logger.info(f"Type: {type(first_record)}")
+                            logger.info(f"Length: {len(first_record) if hasattr(first_record, '__len__') else 'N/A'}")
+                            logger.info(f"Content: {first_record}")
+                            logger.info("=" * 60)
+                        return data
                     return None
                 return await asyncio.to_thread(sync_fetch)
         except Exception as e:
             logger.warning(f"Fetch error: {e}")
             return None
-        return None
     
     async def monitor_loop(self):
-        """Main monitoring loop"""
-        logger.info("🚀 Starting OTP monitoring on Railway...")
+        logger.info("🚀 Starting OTP monitoring...")
         
-        # Send startup message
-        await self.send_telegram_message(f"🚀 **Bot Started Successfully!**\n\n⏰ Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n🌐 Platform: Railway")
+        # Send startup
+        await self.send_telegram_message(f"🚀 **Bot Started**\n⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n📡 Monitoring for OTPs...")
         
         consecutive_failures = 0
         
@@ -232,80 +255,61 @@ class OTPMonitorBot:
                     sms_list = data["aaData"]
                     logger.info(f"📥 Received {len(sms_list)} SMS records")
                     
-                    # Process oldest first
-                    for sms in sms_list:
+                    # Process each SMS
+                    for idx, sms in enumerate(sms_list):
                         try:
-                            # Validate SMS data
-                            if not sms or len(sms) < 6:
-                                continue
+                            logger.info(f"🔍 Processing SMS #{idx}: {sms[:5] if len(sms) > 5 else sms}")
                             
-                            # Safely extract data
-                            timestamp = self.safe_str(sms[0])
-                            phone = self.safe_str(sms[2])
-                            message = self.safe_str(sms[5])
-                            
-                            if not timestamp or not phone:
-                                continue
-                            
-                            otp_id = self.create_otp_id(timestamp, phone, message)
-                            
-                            if otp_id not in self.processed_otps:
-                                logger.info(f"🚨 New OTP: {timestamp} - {phone}")
-                                formatted = self.format_message(sms)
+                            # Create a unique ID
+                            sms_str = json.dumps(sms)
+                            if sms_str not in self.processed_otps:
+                                logger.info(f"🚨 New SMS found! Sending to Telegram...")
                                 
+                                formatted = self.format_message(sms)
                                 if await self.send_telegram_message(formatted):
-                                    self.processed_otps.add(otp_id)
+                                    self.processed_otps.add(sms_str)
                                     self.total_otps_sent += 1
                                     self._save_processed_otps()
-                                    logger.info(f"✅ OTP #{self.total_otps_sent} sent")
-                                    break  # Send only one OTP per cycle
+                                    logger.info(f"✅ SMS #{self.total_otps_sent} sent")
+                                    
+                                    # Wait 2 seconds before next
+                                    await asyncio.sleep(2)
+                            else:
+                                logger.debug(f"⏭️ SMS already processed")
+                                
                         except Exception as e:
-                            logger.error(f"Error processing SMS: {e}, Data: {sms}")
+                            logger.error(f"Error processing SMS {idx}: {e}")
                             continue
                     
-                    await asyncio.sleep(1.0)  # Wait 1 second between checks
+                    await asyncio.sleep(2)
                 else:
                     consecutive_failures += 1
-                    wait_time = min(consecutive_failures * 1.0, 10)
-                    logger.warning(f"⚠️ No data or API error (attempt {consecutive_failures}), waiting {wait_time}s")
+                    wait_time = min(consecutive_failures * 2, 10)
+                    logger.debug(f"No data (attempt {consecutive_failures})")
                     await asyncio.sleep(wait_time)
                     
             except asyncio.CancelledError:
-                logger.info("Monitor loop cancelled")
                 break
             except Exception as e:
-                logger.error(f"Monitor loop error: {e}")
-                await asyncio.sleep(3)
+                logger.error(f"Loop error: {e}")
+                await asyncio.sleep(5)
 
-# Flask routes
 @app.route('/')
-def health_check():
-    return jsonify({
-        "status": "running",
-        "time": datetime.now().isoformat(),
-        "otps_sent": getattr(app, 'total_otps', 0)
-    })
-
 @app.route('/health')
 def health():
-    return jsonify({"status": "ok"})
+    return jsonify({"status": "running", "time": datetime.now().isoformat()})
 
 def run_bot():
-    """Run bot in separate thread"""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     bot = OTPMonitorBot()
-    app.total_otps = bot.total_otps_sent
     try:
         loop.run_until_complete(bot.monitor_loop())
     except Exception as e:
         logger.error(f"Bot error: {e}")
 
 if __name__ == "__main__":
-    # Start bot in background thread
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
-    
-    # Run Flask for health checks
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
