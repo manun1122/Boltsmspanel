@@ -29,8 +29,10 @@ app = Flask(__name__)
 # ========== CONFIGURATION ==========
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8618305528:AAF64PwFIlsw091Hbns8fGQqvwVSW6_4iCY")
 GROUP_CHAT_ID = os.environ.get("GROUP_CHAT_ID", "-1001153782407")
-SESSION_COOKIE = os.environ.get("SESSION_COOKIE", "c685ad79ac6910d642978e8bd0ba450e")
-TARGET_URL = os.environ.get("TARGET_URL", "http://144.217.71.192/ints/agent/res/data_smscdr.php")
+# Updated cookie from the request
+SESSION_COOKIE = os.environ.get("SESSION_COOKIE", "b4cdjl0ptdqmmdl36v0jfev9ls")
+# Updated URL from the request
+TARGET_URL = os.environ.get("TARGET_URL", "http://93.190.143.35/ints/agent/res/data_smscdr.php")
 # ====================================
 
 logging.basicConfig(
@@ -98,7 +100,7 @@ class OTPMonitorBot:
                 # Log what we have
                 logger.info(f"📝 Formatting SMS with {len(sms_data)} fields")
                 
-                # Based on the original SMS list format you provided earlier
+                # Based on the original SMS list format
                 # Format: [timestamp, operator, number, platform, ?, message, ...]
                 timestamp = self.safe_str(sms_data[0]) if len(sms_data) > 0 else ""
                 operator = self.safe_str(sms_data[1]) if len(sms_data) > 1 else ""
@@ -175,23 +177,84 @@ class OTPMonitorBot:
     
     async def fetch_sms_data(self):
         headers = {
-            "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) Chrome/145.0.0.0 Mobile Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Android 13; Mobile; rv:128.0) Gecko/128.0 Firefox/128.0",
             "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Accept-Language": "en-AZ,it-SI;q=0.8,es-BO;q=0.5,ar-IL;q=0.3",
             "X-Requested-With": "XMLHttpRequest",
             "Cookie": f"PHPSESSID={SESSION_COOKIE}",
-            "Referer": "http://144.217.71.192/ints/agent/SMSCDRReports",
+            "Referer": "http://93.190.143.35/ints/agent/SMSCDRReports",
+            "Sec-GPC": "1",
+            "Connection": "keep-alive",
         }
         
         current_date = time.strftime("%Y-%m-%d")
         params = {
             "fdate1": f"{current_date} 00:00:00",
             "fdate2": f"{current_date} 23:59:59",
+            "frange": "",
+            "fclient": "",
+            "fnum": "",
+            "fcli": "",
+            "fgdate": "",
+            "fgmonth": "",
+            "fgrange": "",
+            "fgclient": "",
+            "fgnumber": "",
+            "fgcli": "",
             "fg": "0",
+            "sesskey": "Q05RR0FST0JCTg==",
             "sEcho": "1",
             "iColumns": "9",
+            "sColumns": ",,,,,,,,",
             "iDisplayStart": "0",
-            "iDisplayLength": "50",
+            "iDisplayLength": "25",
+            "mDataProp_0": "0",
+            "sSearch_0": "",
+            "bRegex_0": "false",
+            "bSearchable_0": "true",
+            "bSortable_0": "true",
+            "mDataProp_1": "1",
+            "sSearch_1": "",
+            "bRegex_1": "false",
+            "bSearchable_1": "true",
+            "bSortable_1": "true",
+            "mDataProp_2": "2",
+            "sSearch_2": "",
+            "bRegex_2": "false",
+            "bSearchable_2": "true",
+            "bSortable_2": "true",
+            "mDataProp_3": "3",
+            "sSearch_3": "",
+            "bRegex_3": "false",
+            "bSearchable_3": "true",
+            "bSortable_3": "true",
+            "mDataProp_4": "4",
+            "sSearch_4": "",
+            "bRegex_4": "false",
+            "bSearchable_4": "true",
+            "bSortable_4": "true",
+            "mDataProp_5": "5",
+            "sSearch_5": "",
+            "bRegex_5": "false",
+            "bSearchable_5": "true",
+            "bSortable_5": "true",
+            "mDataProp_6": "6",
+            "sSearch_6": "",
+            "bRegex_6": "false",
+            "bSearchable_6": "true",
+            "bSortable_6": "true",
+            "mDataProp_7": "7",
+            "sSearch_7": "",
+            "bRegex_7": "false",
+            "bSearchable_7": "true",
+            "bSortable_7": "true",
+            "mDataProp_8": "8",
+            "sSearch_8": "",
+            "bRegex_8": "false",
+            "bSearchable_8": "true",
+            "bSortable_8": "false",
             "sSearch": "",
+            "bRegex": "false",
             "iSortCol_0": "0",
             "sSortDir_0": "desc",
             "iSortingCols": "1",
